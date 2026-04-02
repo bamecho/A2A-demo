@@ -27,9 +27,15 @@ Durable decisions that apply across all phases:
 
 ### Acceptance criteria
 
-- [ ] 可以通过标准 A2A SDK 向服务端发起请求并收到文本流式响应
-- [ ] A2A server 运行在现有 FastAPI 宿主内，而不是独立服务
-- [ ] 最小实现有自动化验证，证明基础协议通路和 streaming 行为成立
+- [x] 可以通过标准 A2A SDK 向服务端发起请求并收到文本流式响应
+- [x] A2A server 运行在现有 FastAPI 宿主内，而不是独立服务
+- [x] 最小实现有自动化验证，证明基础协议通路和 streaming 行为成立
+
+### Review
+
+- Outcome: 已完成。FastAPI 宿主挂载真实 A2A 子应用到 `/a2a`，支持标准 A2A streaming 请求，文本输出为稳定 chunk。
+- Verification: `uv run python -m pytest tests/integration/test_phase1_a2a_streaming.py -v` 通过；`uv run python -m pytest -v` 通过。
+- Notes: 已补充非文本输入拒绝，错误为 `-32602` / `Only text input parts are supported in Phase 1`；`requires-python` 已对齐为 `>=3.11`。
 
 ---
 
@@ -43,9 +49,15 @@ Durable decisions that apply across all phases:
 
 ### Acceptance criteria
 
-- [ ] 系统只从 HTTP 层可信来源解析 `user_id`，不依赖 A2A payload 自报身份
-- [ ] 每次 A2A 请求都能在执行链中获得统一的请求上下文
-- [ ] 认证失败、缺失身份上下文等场景有清晰且稳定的错误行为
+- [x] 系统只从 HTTP 层可信来源解析 `user_id`，不依赖 A2A payload 自报身份
+- [x] 每次 A2A 请求都能在执行链中获得统一的请求上下文
+- [x] 认证失败、缺失身份上下文等场景有清晰且稳定的错误行为
+
+### Review
+
+- Outcome: 已完成。可信身份上下文只来自 HTTP 头，并通过 `call_context.state` 桥接进 A2A 执行链。
+- Verification: `uv run python -m pytest tests/unit/test_request_context.py -v` 通过；`uv run python -m pytest tests/integration/test_phase2_identity_context.py -v` 通过；`uv run python -m pytest -v` 通过。
+- Notes: 缺失 `x-user-id` 时在进入 A2A 前返回 `401`；payload 中伪造的 `user_id` / `request_id` / `trace_id` 不被信任；请求结束后上下文会清理。
 
 ---
 
@@ -59,9 +71,15 @@ Durable decisions that apply across all phases:
 
 ### Acceptance criteria
 
-- [ ] 存在清晰、独立的 manager adapter 契约，A2A 层仅通过该契约获取 agent
-- [ ] fake manager 能模拟同用户复用与不同用户隔离的核心行为
-- [ ] 替换 fake manager 为真实内部 manager 时，主要改动集中在 adapter 层
+- [x] 存在清晰、独立的 manager adapter 契约，A2A 层仅通过该契约获取 agent
+- [x] fake manager 能模拟同用户复用与不同用户隔离的核心行为
+- [x] 替换 fake manager 为真实内部 manager 时，主要改动集中在 adapter 层
+
+### Review
+
+- Outcome: 已完成。A2A 层通过 `AgentProvider` 契约按 `user_id` 获取 fake managed agent，复用与隔离语义已建立。
+- Verification: `uv run python -m pytest tests/unit/test_fake_manager.py -v` 通过；`uv run python -m pytest tests/integration/test_phase3_manager_adapter.py -v` 通过；`uv run python -m pytest -v` 通过。
+- Notes: 已修复两类 review finding：1) 不再在共享 executor 上重写 `self.agent`，改为每请求创建局部 `StrandsA2AExecutor`；2) 已移除测试专用 `user_id` 的硬编码耦合。
 
 ---
 

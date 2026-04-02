@@ -109,3 +109,15 @@ Verification:
 - 可以在当前仓库启动一个最小 A2A 服务
 - 集成测试证明流式文本响应成立
 - 没有引入 manager、身份上下文或并发治理的额外复杂度
+
+## Status
+
+- [x] Completed
+
+## Review
+
+- Outcome: FastAPI 宿主已挂载真实 A2A 子应用到 `/a2a`，标准 A2A streaming 请求可返回稳定文本增量。
+- Verification:
+  `uv run python -m pytest tests/integration/test_phase1_a2a_streaming.py -v`
+  `uv run python -m pytest -v`
+- Notes: 非文本输入现在会被明确拒绝，错误为 `-32602` / `Only text input parts are supported in Phase 1`；Python 版本约束已对齐为 `>=3.11`。

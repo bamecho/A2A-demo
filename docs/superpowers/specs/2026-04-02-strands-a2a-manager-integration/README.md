@@ -14,6 +14,13 @@
 - `05-phase-5-error-contracts-and-concurrency-governance.md`
 - `06-phase-6-internal-handoff-and-validation.md`
 
+## Current Status
+
+- Phase 1: Completed
+- Phase 2: Completed
+- Phase 3: Completed
+- Phase 4-6: Not started
+
 ## Shared implementation shape
 
 除非 phase spec 特别说明，统一采用以下代码布局：
