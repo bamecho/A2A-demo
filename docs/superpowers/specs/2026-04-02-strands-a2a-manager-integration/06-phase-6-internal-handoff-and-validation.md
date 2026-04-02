@@ -34,20 +34,20 @@ Out of scope:
 
 ### Task 1: 编写内部接入说明
 
-- [ ] 在 `internal-adoption-guide.md` 中说明哪些模块可直接迁移
-- [ ] 明确 fake manager/fake agent 是唯一必须替换的模拟部分
-- [ ] 给出真实 manager 适配时的接口对齐点：`user_id`、agent 获取、stream 接口、错误边界
+- [x] 在 `internal-adoption-guide.md` 中说明哪些模块可直接迁移
+- [x] 明确 fake manager/fake agent 是唯一必须替换的模拟部分
+- [x] 给出真实 manager 适配时的接口对齐点：`user_id`、agent 获取、stream 接口、错误边界
 
 ### Task 2: 编写验证清单
 
-- [ ] 在 `validation-checklist.md` 中列出内部落地后的必测项
-- [ ] 覆盖协议通路、身份上下文、用户复用、同用户 busy、不同用户并行、错误契约、非文本拒绝
-- [ ] 每个验证项都写出最小成功标准
+- [x] 在 `validation-checklist.md` 中列出内部落地后的必测项
+- [x] 覆盖协议通路、身份上下文、用户复用、同用户 busy、不同用户并行、错误契约、非文本拒绝
+- [x] 每个验证项都写出最小成功标准
 
 ### Task 3: 更新目录索引
 
-- [ ] 修改 `README.md`，加入内部迁移材料索引
-- [ ] 明确目录中哪些文件用于实现，哪些文件用于迁移与验收
+- [x] 修改 `README.md`，加入内部迁移材料索引
+- [x] 明确目录中哪些文件用于实现，哪些文件用于迁移与验收
 
 Verification:
 
@@ -59,3 +59,9 @@ Verification:
 - 真实内部仓库接入者可以只看本目录完成迁移准备
 - fake 与真实替换边界足够明确
 - 验收清单覆盖第一版的关键行为与明确不支持项
+
+## Review
+
+- Outcome: 已完成。新增内部接入说明和验证清单，并在目录索引中明确了“实现材料”与“迁移/验收材料”的分工。
+- Verification: `uv run python -m pytest -v` 通过，结果为 `31 passed`。
+- Notes: 文档明确指出 fake manager/fake agent 是必须替换的占位实现，其余协议层、上下文层、错误/并发治理和 mapper 模块可直接迁入或作为对照实现复用。

@@ -13,13 +13,17 @@
 - `04-phase-4-capability-alignment-and-stream-translation.md`
 - `05-phase-5-error-contracts-and-concurrency-governance.md`
 - `06-phase-6-internal-handoff-and-validation.md`
+- `internal-adoption-guide.md`
+- `validation-checklist.md`
 
 ## Current Status
 
 - Phase 1: Completed
 - Phase 2: Completed
 - Phase 3: Completed
-- Phase 4-6: Not started
+- Phase 4: Completed
+- Phase 5: Completed
+- Phase 6: Completed
 
 ## Shared implementation shape
 
@@ -45,4 +49,20 @@
 
 - 先从 `01` 开始，按顺序执行。
 - 每个 spec 都是独立的执行说明，但默认依赖前一个 phase 已完成。
-- 如果要迁入真实内部仓库，优先参考 `06-phase-6-internal-handoff-and-validation.md` 中的替换说明和验收清单。
+- 如果要迁入真实内部仓库，优先参考 `internal-adoption-guide.md` 和 `validation-checklist.md`。
+
+## Material Index
+
+### Implementation Materials
+
+- `01-phase-1-a2a-protocol-minimum-path.md`
+- `02-phase-2-trusted-identity-context.md`
+- `03-phase-3-manager-adapter-and-simulation.md`
+- `04-phase-4-capability-alignment-and-stream-translation.md`
+- `05-phase-5-error-contracts-and-concurrency-governance.md`
+
+### Migration And Acceptance Materials
+
+- `06-phase-6-internal-handoff-and-validation.md`
+- `internal-adoption-guide.md`
+- `validation-checklist.md`

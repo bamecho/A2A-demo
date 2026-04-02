@@ -41,9 +41,9 @@ Out of scope:
 
 ### Task 1: 用户级并发控制模块
 
-- [ ] 在 `src/strands_a2a_bridge/concurrency/user_lock.py` 定义按 `user_id` 控制的并发守卫
-- [ ] 策略固定为：同一用户已有活跃请求时返回 busy，第一版不做内存队列
-- [ ] 不同用户请求互不阻塞
+- [x] 在 `src/strands_a2a_bridge/concurrency/user_lock.py` 定义按 `user_id` 控制的并发守卫
+- [x] 策略固定为：同一用户已有活跃请求时返回 busy，第一版不做内存队列
+- [x] 不同用户请求互不阻塞
 
 Verification:
 
@@ -52,9 +52,9 @@ Verification:
 
 ### Task 2: 统一错误映射
 
-- [ ] 在 `src/strands_a2a_bridge/errors.py` 定义领域错误类型与公开错误码
-- [ ] 修改 `src/strands_a2a_bridge/http/auth.py` 和 `src/strands_a2a_bridge/a2a/server.py`，统一走错误映射出口
-- [ ] 对外只暴露稳定错误信息和 `request_id`，不暴露 traceback
+- [x] 在 `src/strands_a2a_bridge/errors.py` 定义领域错误类型与公开错误码
+- [x] 修改 `src/strands_a2a_bridge/http/auth.py` 和 `src/strands_a2a_bridge/a2a/server.py`，统一走错误映射出口
+- [x] 对外只暴露稳定错误信息和 `request_id`，不暴露 traceback
 
 Verification:
 
@@ -63,13 +63,19 @@ Verification:
 
 ### Task 3: 失败路径与并发集成测试
 
-- [ ] 在 `tests/integration/test_phase5_error_and_concurrency.py` 覆盖缺失 `x-user-id`
-- [ ] 覆盖同一用户并发请求 busy
-- [ ] 覆盖不同用户并行请求都成功
-- [ ] 覆盖 fake agent 主动抛错时的统一错误响应
+- [x] 在 `tests/integration/test_phase5_error_and_concurrency.py` 覆盖缺失 `x-user-id`
+- [x] 覆盖同一用户并发请求 busy
+- [x] 覆盖不同用户并行请求都成功
+- [x] 覆盖 fake agent 主动抛错时的统一错误响应
 
 ## Done definition
 
 - 同用户并发策略已变成外部可观察行为
 - 主要错误路径都有稳定契约
 - 不同用户并行场景不会发生上下文污染
+
+## Review
+
+- Outcome: 已完成。新增 `UserRequestGuard` 固化同用户 busy 策略，引入统一 HTTP / JSON-RPC 错误映射，并通过 `create_app(..., provider=...)` 暴露可测试的 provider 注入点。
+- Verification: `uv run python -m pytest tests/unit/test_user_lock.py -v` 通过；`uv run python -m pytest tests/unit/test_error_mapping.py -v` 通过；`uv run python -m pytest tests/integration/test_phase5_error_and_concurrency.py -v` 通过；`uv run python -m pytest -v` 通过，结果为 `31 passed`。
+- Notes: 认证失败现在返回稳定 JSON body 和 `x-request-id` header；同用户并发固定为 busy，不做队列；manager/agent 异常对外都包含公共错误码和 `request_id`，不暴露内部 traceback。

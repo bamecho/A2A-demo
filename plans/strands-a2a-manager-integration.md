@@ -123,9 +123,15 @@ Durable decisions that apply across all phases:
 
 ### Acceptance criteria
 
-- [ ] 主要错误场景都有统一、稳定且不泄漏内部细节的响应契约
-- [ ] 同一用户并发请求时系统表现为 busy 或串行化，不会触发不可控竞态
-- [ ] 不同用户的请求可以并行执行且不会发生上下文污染
+- [x] 主要错误场景都有统一、稳定且不泄漏内部细节的响应契约
+- [x] 同一用户并发请求时系统表现为 busy 或串行化，不会触发不可控竞态
+- [x] 不同用户的请求可以并行执行且不会发生上下文污染
+
+### Review
+
+- Outcome: 已完成。引入用户级并发守卫与统一错误映射，固化了同用户 busy、不同用户并行以及认证/manager/agent 失败路径的公共契约。
+- Verification: `uv run python -m pytest tests/unit/test_user_lock.py -v` 通过；`uv run python -m pytest tests/unit/test_error_mapping.py -v` 通过；`uv run python -m pytest tests/integration/test_phase5_error_and_concurrency.py -v` 通过；`uv run python -m pytest -v` 通过，结果为 `31 passed`。
+- Notes: 认证失败响应现在稳定包含 `request_id`；A2A JSON-RPC 错误统一带 `data.code` 和 `data.request_id`；同用户并发策略固定为 busy，不做内存队列。
 
 ---
 
@@ -139,6 +145,12 @@ Durable decisions that apply across all phases:
 
 ### Acceptance criteria
 
-- [ ] 提供清晰的 fake manager 到真实 manager 的替换说明
-- [ ] 第一版支持边界和明确不支持的能力被完整记录
-- [ ] 提供面向内部系统接入时的验证清单，覆盖协议、流式、复用、并发和错误路径
+- [x] 提供清晰的 fake manager 到真实 manager 的替换说明
+- [x] 第一版支持边界和明确不支持的能力被完整记录
+- [x] 提供面向内部系统接入时的验证清单，覆盖协议、流式、复用、并发和错误路径
+
+### Review
+
+- Outcome: 已完成。新增内部接入指南、验证清单和目录索引，明确哪些模块可直接迁移、哪些模块必须替换，以及内部接入后的最小验收面。
+- Verification: `uv run python -m pytest -v` 通过，结果为 `31 passed`。
+- Notes: 迁移文档明确将 fake manager/fake agent 定义为唯一必须替换的模拟实现；第一版能力边界与不支持项已集中收敛到接入材料中，便于内部落地时逐项验收。

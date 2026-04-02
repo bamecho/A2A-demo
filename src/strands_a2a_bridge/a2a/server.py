@@ -3,7 +3,7 @@ from a2a.server.apps import A2AFastAPIApplication
 from a2a.server.apps.jsonrpc.jsonrpc_app import DefaultCallContextBuilder
 from a2a.server.context import ServerCallContext
 from a2a.server.events import EventQueue
-from a2a.types import InvalidParamsError, Part, TextPart
+from a2a.types import InternalError, InvalidParamsError, Part, TextPart
 from a2a.utils.errors import ServerError
 from fastapi import FastAPI
 from strands.multiagent.a2a.executor import StrandsA2AExecutor
@@ -11,7 +11,14 @@ from strands.multiagent.a2a.server import A2AServer
 
 from strands_a2a_bridge.a2a.mapping import map_text_parts_to_content_blocks
 from strands_a2a_bridge.a2a.stub_agent import build_stub_agent
+from strands_a2a_bridge.concurrency.user_lock import UserBusyError, UserRequestGuard
 from strands_a2a_bridge.config import AppConfig
+from strands_a2a_bridge.errors import (
+    AgentExecutionFailedError,
+    ManagerUnavailableError,
+    MissingRequestContextError,
+    to_a2a_server_error,
+)
 from strands_a2a_bridge.http.context import (
     RequestContext as TrustedRequestContext,
     clear_current_request_context,
@@ -51,6 +58,7 @@ class ManagerBackedStrandsA2AExecutor(StrandsA2AExecutor):
         self,
         provider: AgentProvider,
         bootstrap_agent: ManagedAgent,
+        request_guard: UserRequestGuard,
         *,
         enable_a2a_compliant_streaming: bool = False,
     ) -> None:
@@ -59,6 +67,7 @@ class ManagerBackedStrandsA2AExecutor(StrandsA2AExecutor):
             enable_a2a_compliant_streaming=enable_a2a_compliant_streaming,
         )
         self._provider = provider
+        self._request_guard = request_guard
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         global _last_observed_agent_id, _last_observed_request_context
@@ -69,23 +78,53 @@ class ManagerBackedStrandsA2AExecutor(StrandsA2AExecutor):
         if trusted_context is None:
             trusted_context = get_current_request_context()
         if trusted_context is None:
-            raise ServerError(error=InvalidParamsError(message=MISSING_CONTEXT_ERROR))
-        _last_observed_request_context = trusted_context
-        set_current_request_context(trusted_context)
-        agent = self._provider.get_or_create_agent(trusted_context.user_id)
-        _last_observed_agent_id = agent.agent_id
-
-        message = context.message
-        try:
-            if message is None:
-                raise ServerError(error=InvalidParamsError(message="Message is required"))
-            if any(not isinstance(part.root, TextPart) for part in message.parts):
-                raise ServerError(error=InvalidParamsError(message=NON_TEXT_INPUT_ERROR))
-            local_executor = Phase4TextOnlyStrandsA2AExecutor(
-                agent,
-                enable_a2a_compliant_streaming=self.enable_a2a_compliant_streaming,
+            raise to_a2a_server_error(
+                MissingRequestContextError(MISSING_CONTEXT_ERROR),
+                request_id="unknown",
             )
-            await local_executor.execute(context, event_queue)
+
+        try:
+            _last_observed_request_context = trusted_context
+            set_current_request_context(trusted_context)
+            async with self._request_guard.claim(trusted_context.user_id):
+                try:
+                    agent = self._provider.get_or_create_agent(trusted_context.user_id)
+                except Exception as exc:
+                    raise to_a2a_server_error(
+                        ManagerUnavailableError(),
+                        request_id=trusted_context.request_id,
+                    ) from exc
+
+                _last_observed_agent_id = agent.agent_id
+                message = context.message
+                if message is None:
+                    raise ServerError(error=InvalidParamsError(message="Message is required"))
+                if any(not isinstance(part.root, TextPart) for part in message.parts):
+                    raise ServerError(error=InvalidParamsError(message=NON_TEXT_INPUT_ERROR))
+
+                local_executor = Phase4TextOnlyStrandsA2AExecutor(
+                    agent,
+                    enable_a2a_compliant_streaming=self.enable_a2a_compliant_streaming,
+                )
+                try:
+                    await local_executor.execute(context, event_queue)
+                except ServerError as exc:
+                    if isinstance(exc.error, InternalError):
+                        raise to_a2a_server_error(
+                            AgentExecutionFailedError(),
+                            request_id=trusted_context.request_id,
+                        ) from exc
+                    raise
+                except Exception as exc:
+                    raise to_a2a_server_error(
+                        AgentExecutionFailedError(),
+                        request_id=trusted_context.request_id,
+                    ) from exc
+        except UserBusyError as exc:
+            raise to_a2a_server_error(
+                exc,
+                request_id=trusted_context.request_id,
+            ) from exc
         finally:
             clear_current_request_context()
 
@@ -104,8 +143,13 @@ class TrustedRequestContextBuilder(DefaultCallContextBuilder):
         return call_context
 
 
-def build_a2a_router(config: AppConfig, provider: AgentProvider | None = None) -> FastAPI:
+def build_a2a_router(
+    config: AppConfig,
+    provider: AgentProvider | None = None,
+    request_guard: UserRequestGuard | None = None,
+) -> FastAPI:
     resolved_provider = provider or FakeAgentProvider()
+    resolved_request_guard = request_guard or UserRequestGuard()
     bootstrap_agent = build_stub_agent()
     public_a2a_url = f"{config.public_url.rstrip('/')}/a2a"
     server = A2AServer(
@@ -118,6 +162,7 @@ def build_a2a_router(config: AppConfig, provider: AgentProvider | None = None) -
     server.request_handler.agent_executor = ManagerBackedStrandsA2AExecutor(
         resolved_provider,
         bootstrap_agent,
+        resolved_request_guard,
         enable_a2a_compliant_streaming=True,
     )
     application = A2AFastAPIApplication(
