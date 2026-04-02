@@ -88,3 +88,16 @@ Test assertions:
 - HTTP 层是唯一可信身份来源
 - A2A 执行链稳定读取 `RequestContext`
 - 认证失败与上下文缺失行为已自动化验证
+
+## Status
+
+- [x] Completed
+
+## Review
+
+- Outcome: 可信身份上下文只来自 HTTP 头，并通过 `ServerCallContext.state` 桥接进 A2A 执行链；payload 身份伪造被忽略。
+- Verification:
+  `uv run python -m pytest tests/unit/test_request_context.py -v`
+  `uv run python -m pytest tests/integration/test_phase2_identity_context.py -v`
+  `uv run python -m pytest -v`
+- Notes: 缺失 `x-user-id` 时在进入 A2A 前直接返回 `401`；请求结束后上下文会清理。

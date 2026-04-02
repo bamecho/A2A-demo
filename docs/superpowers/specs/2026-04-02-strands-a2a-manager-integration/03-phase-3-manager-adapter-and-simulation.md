@@ -76,3 +76,16 @@ Verification:
 - A2A 层已通过独立 adapter 契约获取 agent
 - 当前仓库存在可运行的 fake manager/fake agent 模拟实现
 - 复用与隔离语义已通过自动化测试证明
+
+## Status
+
+- [x] Completed
+
+## Review
+
+- Outcome: A2A 层已通过 `AgentProvider` 契约按 `user_id` 获取 fake managed agent，复用与隔离语义已建立。
+- Verification:
+  `uv run python -m pytest tests/unit/test_fake_manager.py -v`
+  `uv run python -m pytest tests/integration/test_phase3_manager_adapter.py -v`
+  `uv run python -m pytest -v`
+- Notes: 已修复两类 review finding：不再在共享 executor 上重写 `self.agent`；已移除测试专用 `user_id` 的生产硬编码。
