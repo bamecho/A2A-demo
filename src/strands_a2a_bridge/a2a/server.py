@@ -1,5 +1,7 @@
 """A2A 服务层：构建路由、执行器及上下文处理."""
 
+import logging
+
 from a2a.server.agent_execution import RequestContext
 from a2a.server.apps import A2AFastAPIApplication
 from a2a.server.apps.jsonrpc.jsonrpc_app import DefaultCallContextBuilder
@@ -38,6 +40,8 @@ MISSING_CONTEXT_ERROR = "Missing trusted request context"
 _last_observed_request_context: TrustedRequestContext | None = None
 _last_observed_agent_id: str | None = None
 
+logger = logging.getLogger(__name__)
+
 
 def get_last_observed_request_context() -> TrustedRequestContext | None:
     """获取最近一次观察到的请求上下文（仅用于测试）."""
@@ -62,7 +66,7 @@ def clear_last_observed_agent_id() -> None:
 
 
 class ManagerBackedStrandsA2AExecutor(StrandsA2AExecutor):
-    """基于 AgentProvider 的 A2A 执行器，负责获取或创建用户专属的 Agent."""
+    """基于 AgentProvider 的 A2A 执行器，负责按用户获取真实执行 agent."""
 
     def __init__(
         self,
@@ -76,6 +80,8 @@ class ManagerBackedStrandsA2AExecutor(StrandsA2AExecutor):
             bootstrap_agent,
             enable_a2a_compliant_streaming=enable_a2a_compliant_streaming,
         )
+        # 基类要求传入一个 agent；这里的 bootstrap_agent 仅用于初始化占位，
+        # 实际请求执行时会在 execute() 内改用 provider 返回的用户专属 agent。
         self._provider = provider
         self._request_guard = request_guard
 
@@ -94,6 +100,12 @@ class ManagerBackedStrandsA2AExecutor(StrandsA2AExecutor):
                 MissingRequestContextError(MISSING_CONTEXT_ERROR),
                 request_id="unknown",
             )
+        logger.info(
+            "executor resolved trusted context request_id=%s user_id=%s trace_id=%s",
+            trusted_context.request_id,
+            trusted_context.user_id,
+            trusted_context.trace_id,
+        )
 
         try:
             _last_observed_request_context = trusted_context
@@ -108,9 +120,22 @@ class ManagerBackedStrandsA2AExecutor(StrandsA2AExecutor):
                     ) from exc
 
                 _last_observed_agent_id = agent.agent_id
+                logger.info(
+                    "executor obtained agent request_id=%s user_id=%s agent_id=%s",
+                    trusted_context.request_id,
+                    trusted_context.user_id,
+                    agent.agent_id,
+                )
                 message = context.message
                 if message is None:
                     raise ServerError(error=InvalidParamsError(message="Message is required"))
+                logger.info(
+                    "executor received message request_id=%s user_id=%s message_id=%s part_count=%s",
+                    trusted_context.request_id,
+                    trusted_context.user_id,
+                    message.message_id,
+                    len(message.parts),
+                )
                 if any(not isinstance(part.root, TextPart) for part in message.parts):
                     raise ServerError(error=InvalidParamsError(message=NON_TEXT_INPUT_ERROR))
 
@@ -119,7 +144,19 @@ class ManagerBackedStrandsA2AExecutor(StrandsA2AExecutor):
                     enable_a2a_compliant_streaming=self.enable_a2a_compliant_streaming,
                 )
                 try:
+                    logger.info(
+                        "executor delegating request_id=%s user_id=%s agent_id=%s",
+                        trusted_context.request_id,
+                        trusted_context.user_id,
+                        agent.agent_id,
+                    )
                     await local_executor.execute(context, event_queue)
+                    logger.info(
+                        "executor completed request_id=%s user_id=%s agent_id=%s",
+                        trusted_context.request_id,
+                        trusted_context.user_id,
+                        agent.agent_id,
+                    )
                 except ServerError as exc:
                     if isinstance(exc.error, InternalError):
                         raise to_a2a_server_error(
@@ -167,6 +204,8 @@ def build_a2a_router(
     """构建 A2A FastAPI 子应用，挂载到主应用的 /a2a 路径."""
     resolved_provider = provider or FakeAgentProvider()
     resolved_request_guard = request_guard or UserRequestGuard()
+    # bootstrap_agent 只用于 A2AServer 初始化、生成 agent card 和默认 executor 占位。
+    # 真正处理消息的 agent 会在请求到达后由 resolved_provider 按 user_id 提供。
     bootstrap_agent = build_stub_agent()
     public_a2a_url = f"{config.public_url.rstrip('/')}/a2a"
     server = A2AServer(

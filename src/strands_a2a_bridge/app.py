@@ -1,5 +1,7 @@
 """FastAPI 应用入口，挂载 A2A 路由并配置中间件."""
 
+import logging
+
 from fastapi import FastAPI, Request
 
 from strands_a2a_bridge.a2a.server import build_a2a_router
@@ -13,6 +15,8 @@ from strands_a2a_bridge.http.auth import (
 )
 from strands_a2a_bridge.http.context import clear_current_request_context, set_current_request_context
 from strands_a2a_bridge.manager.contracts import AgentProvider
+
+logger = logging.getLogger(__name__)
 
 
 def create_app(
@@ -40,10 +44,22 @@ def create_app(
             return to_http_error_response(exc, request_id=request_id)
 
         request.state.trusted_request_context = request_context
+        logger.info(
+            "request_context_middleware authenticated request_id=%s user_id=%s trace_id=%s",
+            request_context.request_id,
+            request_context.user_id,
+            request_context.trace_id,
+        )
         set_current_request_context(request_context)
         try:
             response = await call_next(request)
             response.headers["x-request-id"] = request_context.request_id
+            logger.info(
+                "request_context_middleware completed request_id=%s user_id=%s status_code=%s",
+                request_context.request_id,
+                request_context.user_id,
+                response.status_code,
+            )
             return response
         finally:
             clear_current_request_context()

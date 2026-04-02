@@ -1,11 +1,15 @@
-"""Phase 1 测试用的 Stub Agent 实现."""
+"""A2A server 启动时使用的 bootstrap agent 占位实现."""
 
 from collections.abc import AsyncIterator, Sequence
 from typing import Any
 
 
 class StubAgent:
-    """确定性文本流式 Stub Agent，用于 Phase 1 测试验证."""
+    """仅用于提供基础元信息和默认 executor 占位的确定性 Stub Agent.
+
+    当前请求处理链路会在 server 初始化后替换掉默认 executor，
+    实际消息不会路由到这个 agent 执行。
+    """
 
     def __init__(self) -> None:
         self.name = "phase1-stub-agent"
@@ -25,5 +29,5 @@ class StubAgent:
 
 
 def build_stub_agent() -> StubAgent:
-    """创建 StubAgent 实例."""
+    """创建 bootstrap StubAgent 实例."""
     return StubAgent()

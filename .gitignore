@@ -2,3 +2,6 @@
 .worktree/
 __pycache__/
 .pytest_cache/
+.*/*
+tasks/
+plans/
