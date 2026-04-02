@@ -1,3 +1,5 @@
+"""HTTP 工具层：请求上下文管理和认证."""
+
 from strands_a2a_bridge.http.context import (
     RequestContext,
     clear_current_request_context,

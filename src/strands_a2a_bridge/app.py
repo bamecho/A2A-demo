@@ -1,3 +1,5 @@
+"""FastAPI 应用入口，挂载 A2A 路由并配置中间件."""
+
 from fastapi import FastAPI, Request
 
 from strands_a2a_bridge.a2a.server import build_a2a_router
@@ -18,11 +20,13 @@ def create_app(
     *,
     provider: AgentProvider | None = None,
 ) -> FastAPI:
+    """创建 FastAPI 应用，配置请求上下文中间件和 A2A 路由."""
     app_config = config or AppConfig()
     app = FastAPI(title=app_config.service_name)
 
     @app.middleware("http")
     async def request_context_middleware(request: Request, call_next):
+        """请求中间件：验证请求头、构建请求上下文并注入到请求状态."""
         if not should_authenticate_request(request):
             return await call_next(request)
 

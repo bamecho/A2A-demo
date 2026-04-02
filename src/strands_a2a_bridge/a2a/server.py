@@ -1,3 +1,5 @@
+"""A2A 服务层：构建路由、执行器及上下文处理."""
+
 from a2a.server.agent_execution import RequestContext
 from a2a.server.apps import A2AFastAPIApplication
 from a2a.server.apps.jsonrpc.jsonrpc_app import DefaultCallContextBuilder
@@ -28,32 +30,40 @@ from strands_a2a_bridge.http.context import (
 from strands_a2a_bridge.manager.contracts import AgentProvider, ManagedAgent
 from strands_a2a_bridge.manager.fake import FakeAgentProvider
 
+# 错误消息常量
 NON_TEXT_INPUT_ERROR = "Only text input parts are supported in Phase 1"
 MISSING_CONTEXT_ERROR = "Missing trusted request context"
 
+# 测试观察用的全局状态
 _last_observed_request_context: TrustedRequestContext | None = None
 _last_observed_agent_id: str | None = None
 
 
 def get_last_observed_request_context() -> TrustedRequestContext | None:
+    """获取最近一次观察到的请求上下文（仅用于测试）."""
     return _last_observed_request_context
 
 
 def clear_last_observed_request_context() -> None:
+    """清除请求上下文观察状态（仅用于测试）."""
     global _last_observed_request_context
     _last_observed_request_context = None
 
 
 def get_last_observed_agent_id() -> str | None:
+    """获取最近一次观察到的 Agent ID（仅用于测试）."""
     return _last_observed_agent_id
 
 
 def clear_last_observed_agent_id() -> None:
+    """清除 Agent ID 观察状态（仅用于测试）."""
     global _last_observed_agent_id
     _last_observed_agent_id = None
 
 
 class ManagerBackedStrandsA2AExecutor(StrandsA2AExecutor):
+    """基于 AgentProvider 的 A2A 执行器，负责获取或创建用户专属的 Agent."""
+
     def __init__(
         self,
         provider: AgentProvider,
@@ -70,8 +80,10 @@ class ManagerBackedStrandsA2AExecutor(StrandsA2AExecutor):
         self._request_guard = request_guard
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
+        """执行 A2A 请求：验证上下文、获取 Agent 并委托给执行器处理."""
         global _last_observed_agent_id, _last_observed_request_context
 
+        # 从调用上下文或线程本地变量获取受信任的请求上下文
         trusted_context = None
         if context.call_context is not None:
             trusted_context = context.call_context.state.get("trusted_request_context")
@@ -130,11 +142,15 @@ class ManagerBackedStrandsA2AExecutor(StrandsA2AExecutor):
 
 
 class Phase4TextOnlyStrandsA2AExecutor(StrandsA2AExecutor):
+    """仅支持文本输入的 A2A 执行器."""
+
     def _convert_a2a_parts_to_content_blocks(self, parts: list[Part]) -> list[dict[str, str]]:
         return map_text_parts_to_content_blocks(parts)
 
 
 class TrustedRequestContextBuilder(DefaultCallContextBuilder):
+    """构建 ServerCallContext，将受信任的请求上下文注入到调用状态中."""
+
     def build(self, request) -> ServerCallContext:
         call_context = super().build(request)
         trusted_request_context = getattr(request.state, "trusted_request_context", None)
@@ -148,6 +164,7 @@ def build_a2a_router(
     provider: AgentProvider | None = None,
     request_guard: UserRequestGuard | None = None,
 ) -> FastAPI:
+    """构建 A2A FastAPI 子应用，挂载到主应用的 /a2a 路径."""
     resolved_provider = provider or FakeAgentProvider()
     resolved_request_guard = request_guard or UserRequestGuard()
     bootstrap_agent = build_stub_agent()

@@ -1,1 +1,1 @@
-"""A2A integration layer for the Phase 1 bridge."""
+"""A2A 集成层：处理 A2A 协议的服务器、执行器和类型映射."""
