@@ -97,6 +97,14 @@ Durable decisions that apply across all phases:
 - [ ] agent 的流式输出会被稳定翻译为 A2A 可消费的文本事件序列
 - [ ] 同一用户连续请求表现出与现有 API 目标一致的复用语义
 
+### Execution status
+
+- Worktree: 复用已存在的 Phase 4 隔离工作树 `/workspaces/skill-hub/A2A-demo/.worktree/phase-4-capability-alignment`
+- Branch: `phase-4-capability-alignment`
+- Ignore safety: 已确认 `.gitignore` 中的 `.worktree/` 规则生效，worktree 目录不会进入版本控制
+- Environment: `uv sync` 已完成，依赖与锁文件一致
+- Baseline verification: `uv run python -m pytest -v` 通过，结果为 `13 passed`
+
 ---
 
 ## Phase 5: 错误契约与并发治理
