@@ -93,9 +93,15 @@ Durable decisions that apply across all phases:
 
 ### Acceptance criteria
 
-- [ ] A2A 输入会被稳定映射为内部 agent 可消费的文本输入
-- [ ] agent 的流式输出会被稳定翻译为 A2A 可消费的文本事件序列
-- [ ] 同一用户连续请求表现出与现有 API 目标一致的复用语义
+- [x] A2A 输入会被稳定映射为内部 agent 可消费的文本输入
+- [x] agent 的流式输出会被稳定翻译为 A2A 可消费的文本事件序列
+- [x] 同一用户连续请求表现出与现有 API 目标一致的复用语义
+
+### Review
+
+- Outcome: 已完成。新增显式文本输入 mapper，将多段 A2A text parts 合并为单一内部文本 prompt；同一用户复用的 fake managed agent 现在会保留最小会话状态，并在流式文本中反映当前 turn、当前输入和上一轮输入。
+- Verification: `uv run python -m pytest tests/unit/test_text_input_mapper.py -v` 通过；`uv run python -m pytest tests/integration/test_phase4_capability_alignment.py -v` 通过；`uv run python -m pytest -v` 通过，结果为 `18 passed`。
+- Notes: 输出 streaming 未自定义重写，继续复用 `StrandsA2AExecutor` 的 A2A-compliant artifact streaming；旧 Phase 1 测试已从固定文案断言收敛为协议行为断言，避免与后续阶段的能力演进冲突。
 
 ---
 

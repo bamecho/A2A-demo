@@ -3,12 +3,13 @@ from a2a.server.apps import A2AFastAPIApplication
 from a2a.server.apps.jsonrpc.jsonrpc_app import DefaultCallContextBuilder
 from a2a.server.context import ServerCallContext
 from a2a.server.events import EventQueue
-from a2a.types import InvalidParamsError, TextPart
+from a2a.types import InvalidParamsError, Part, TextPart
 from a2a.utils.errors import ServerError
 from fastapi import FastAPI
 from strands.multiagent.a2a.executor import StrandsA2AExecutor
 from strands.multiagent.a2a.server import A2AServer
 
+from strands_a2a_bridge.a2a.mapping import map_text_parts_to_content_blocks
 from strands_a2a_bridge.a2a.stub_agent import build_stub_agent
 from strands_a2a_bridge.config import AppConfig
 from strands_a2a_bridge.http.context import (
@@ -80,13 +81,18 @@ class ManagerBackedStrandsA2AExecutor(StrandsA2AExecutor):
                 raise ServerError(error=InvalidParamsError(message="Message is required"))
             if any(not isinstance(part.root, TextPart) for part in message.parts):
                 raise ServerError(error=InvalidParamsError(message=NON_TEXT_INPUT_ERROR))
-            local_executor = StrandsA2AExecutor(
+            local_executor = Phase4TextOnlyStrandsA2AExecutor(
                 agent,
                 enable_a2a_compliant_streaming=self.enable_a2a_compliant_streaming,
             )
             await local_executor.execute(context, event_queue)
         finally:
             clear_current_request_context()
+
+
+class Phase4TextOnlyStrandsA2AExecutor(StrandsA2AExecutor):
+    def _convert_a2a_parts_to_content_blocks(self, parts: list[Part]) -> list[dict[str, str]]:
+        return map_text_parts_to_content_blocks(parts)
 
 
 class TrustedRequestContextBuilder(DefaultCallContextBuilder):

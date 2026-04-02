@@ -11,17 +11,28 @@ class FakeManagedAgent:
     agent_id: str
     name: str = "phase3-fake-agent"
     description: str = "Phase 3 fake managed agent"
+    turn_count: int = 0
+    last_user_input: str | None = None
 
     async def stream_async(
         self,
-        _content_blocks: Sequence[Any],
+        content_blocks: Sequence[Any],
         *,
         invocation_state: dict[str, Any] | None = None,
     ) -> AsyncIterator[dict[str, str]]:
         _ = invocation_state
-        for chunk in ("hello", "from", self.agent_id):
+        current_input = _extract_text_input(content_blocks)
+        previous_input = self.last_user_input or "<none>"
+        self.turn_count += 1
+        self.last_user_input = current_input
+
+        for chunk in (
+            f"turn {self.turn_count}",
+            f"input {current_input}",
+            f"previous {previous_input}",
+        ):
             yield {"data": chunk}
-        yield {"result": f"hello from {self.agent_id}"}
+        yield {"result": f"turn {self.turn_count}: {current_input}"}
 
 
 class FakeAgentProvider:
@@ -43,3 +54,13 @@ class FakeAgentProvider:
         agent = FakeManagedAgent(user_id=user_id, agent_id=agent_id)
         self._agents_by_user_id[user_id] = agent
         return agent
+
+
+def _extract_text_input(content_blocks: Sequence[Any]) -> str:
+    text_segments: list[str] = []
+    for block in content_blocks:
+        if isinstance(block, dict):
+            text_value = block.get("text")
+            if isinstance(text_value, str) and text_value:
+                text_segments.append(text_value)
+    return "\n".join(text_segments)
