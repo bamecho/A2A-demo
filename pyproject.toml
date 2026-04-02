@@ -1,0 +1,23 @@
+[project]
+name = "strands-a2a-bridge"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Bingjian Zhu", email = "105710770+bamecho@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.135.3",
+    "httpx>=0.28.1",
+    "pytest>=9.0.2",
+    "strands-agents>=1.34.1",
+    "uvicorn>=0.42.0",
+]
+
+[project.scripts]
+strands-a2a-bridge = "strands_a2a_bridge:main"
+
+[build-system]
+requires = ["uv_build>=0.11.3,<0.12.0"]
+build-backend = "uv_build"
